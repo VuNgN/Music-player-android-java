@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">MyMusicPlayer2</string>
+    <string name="play">Play</string>
+    <string name="stop">Stop</string>
+    <string name="song_image">song image</string>
+    <string name="pause_button">pause button</string>
+    <string name="clear_button">cancel button</string>
+    <string name="subtext">This is Subtext</string>
+    <string name="previous">Previous</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="exit">Exit</string>
+    <string name="notification_tag">Media_session_compat_tag</string>
+</resources>
