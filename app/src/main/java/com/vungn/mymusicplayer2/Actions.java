@@ -1,7 +1,5 @@
 package com.vungn.mymusicplayer2;
 
-import android.content.Intent;
-
 public class Common {
     public static final String MUSIC_PUT_KEY = "Put_music_key";
     public static final String ACTION_PUT_KEY = "Put_action_key";
