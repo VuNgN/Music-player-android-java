@@ -8,13 +8,16 @@ import java.io.Serializable;
 
 public class MusicHelper implements Serializable {
     private MediaPlayer mMediaPlayer;
-    private final Song mSong;
+    private Song mSong;
     private int mAction;
     private boolean isPlaying;
     private final Context context;
 
-    public MusicHelper(Context context, Song mSong) {
+    public MusicHelper(Context context) {
         this.context = context;
+    }
+
+    public void setSong(Song mSong) {
         this.mSong = mSong;
     }
 

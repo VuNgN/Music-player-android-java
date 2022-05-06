@@ -12,15 +12,17 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.media.session.MediaSessionCompat;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
-import java.util.concurrent.BlockingDeque;
 
 public class MusicService extends Service {
+    public static final String KEY_MUSIC = "com.vungn.keyMusic";
+    public static final String KEY_ACTION = "com.vungn.keyAction";
+    public static final String KEY_BROAD_CAST_NOTIFICATION = "com.vungn.keyBroadCastNotification";
+    public static final String KEY_BROAD_CAST_MUSIC = "com.vungn.keyBroadCastMusic";
+    public static final String KEY_MUSIC_STATUS = "com.vungn.keyMusicStatus";
+
     private Song mSong;
     private MusicHelper mMusicHelper;
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
@@ -38,11 +40,22 @@ public class MusicService extends Service {
     }
 
     @Override
+    public void onCreate() {
+        super.onCreate();
+        mMusicHelper = new MusicHelper(this);
+        registerReceiver(mBroadcastReceiver, new IntentFilter(KEY_BROAD_CAST_NOTIFICATION));
+    }
+
+    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        registerReceiver(mBroadcastReceiver, new IntentFilter(Actions.SENT_BROAD_CAST));
-        getSong(intent);
-        handleAction(intent);
-        startForegroundService();
+        if (intent.getAction() == MainActivity.KEY_GET_MUSIC) {
+            if (mSong != null)
+            sendSongInfo();
+        } else {
+            getSong(intent);
+            handleAction(intent);
+            startForegroundService();
+        }
         return START_NOT_STICKY;
     }
 
@@ -60,7 +73,7 @@ public class MusicService extends Service {
     private int getAction(Intent intent) {
         Bundle bundle = intent.getExtras();
         if (bundle != null)
-        return bundle.getInt(Actions.ACTION_PUT_KEY, Actions.PLAY_SONG);
+        return bundle.getInt(KEY_ACTION, Actions.PLAY_SONG);
         return Actions.PLAY_SONG;
     }
 
@@ -94,10 +107,10 @@ public class MusicService extends Service {
 
     private PendingIntent getPendingIntent(Context context, int action) {
         Intent intent = new Intent();
-        intent.setAction(Actions.SENT_BROAD_CAST);
+        intent.setAction(KEY_BROAD_CAST_NOTIFICATION);
         Bundle bundle = new Bundle();
-        bundle.putInt(Actions.ACTION_PUT_KEY, action);
-        bundle.putSerializable(Actions.MUSIC_PUT_KEY, mSong);
+        bundle.putInt(KEY_ACTION, action);
+        bundle.putSerializable(KEY_MUSIC, mSong);
         intent.putExtras(bundle);
         return PendingIntent.getBroadcast(getApplicationContext(), action, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
@@ -105,12 +118,22 @@ public class MusicService extends Service {
     private void getSong(Intent intent) {
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
-            Song song = (Song) bundle.get(Actions.MUSIC_PUT_KEY);
+            Song song = (Song) bundle.get(KEY_MUSIC);
             if (song != null) {
                 mSong = song;
-                mMusicHelper = new MusicHelper(this, song);
+                mMusicHelper.setSong(song);
             }
         }
+    }
+
+    private void sendSongInfo() {
+        Intent intentMainActivity = new Intent();
+        intentMainActivity.setAction(KEY_BROAD_CAST_MUSIC);
+        Bundle bundle = new Bundle();
+        bundle.putSerializable(KEY_MUSIC, mSong);
+        bundle.putBoolean(KEY_MUSIC_STATUS, mMusicHelper.isPlaying());
+        intentMainActivity.putExtras(bundle);
+        sendBroadcast(intentMainActivity);
     }
 
     @Override

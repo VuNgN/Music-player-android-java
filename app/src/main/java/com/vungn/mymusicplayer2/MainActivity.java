@@ -1,14 +1,11 @@
 package com.vungn.mymusicplayer2;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -17,6 +14,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
+    public static final String KEY_GET_MUSIC = "com.vungn.keyGetMusic";
     private Button playButton;
     private Button stopButton;
     private ImageView songImage;
@@ -31,8 +29,11 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             Bundle bundle = intent.getExtras();
             if (bundle != null) {
-                int action = bundle.getInt(Actions.ACTION_PUT_KEY, Actions.PLAY_SONG);
-                Song song = (Song) bundle.get(Actions.MUSIC_PUT_KEY);
+                int action = bundle.getInt(MusicService.KEY_ACTION, Actions.PLAY_SONG);
+                Song song = (Song) bundle.get(MusicService.KEY_MUSIC);
+                if (intent.getAction().equals(MusicService.KEY_BROAD_CAST_MUSIC)) {
+                    isPlaying = bundle.getBoolean(MusicService.KEY_MUSIC_STATUS);
+                }
                 handleBottomView(song, action);
             }
         }
@@ -42,9 +43,17 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        registerReceiver(mBroadcastReceiver, new IntentFilter(Actions.SENT_BROAD_CAST));
+        getMusic();
+        registerReceiver(mBroadcastReceiver, new IntentFilter(MusicService.KEY_BROAD_CAST_MUSIC));
+        registerReceiver(mBroadcastReceiver, new IntentFilter(MusicService.KEY_BROAD_CAST_NOTIFICATION));
         retrieveView();
         handleClickListener();
+    }
+
+    private void getMusic() {
+        Intent intent = new Intent(this, MusicService.class);
+        intent.setAction(KEY_GET_MUSIC);
+        startService(intent);
     }
 
     private void handleClickListener() {
@@ -77,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
     private void sendActionToService(int action) {
         Intent intent = new Intent(this, MusicService.class);
         Bundle bundle = new Bundle();
-        bundle.putInt(Actions.ACTION_PUT_KEY, action);
+        bundle.putInt(MusicService.KEY_ACTION, action);
         intent.putExtras(bundle);
         startService(intent);
     }
@@ -101,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
                             "Hà Anh Tuấn",
                             R.drawable.thang_may_em_nho_anh,
                             R.raw.thang_may_em_nho_anh);
-        bundle.putSerializable(Actions.MUSIC_PUT_KEY, song);
+        bundle.putSerializable(MusicService.KEY_MUSIC, song);
         intentMusicService.putExtras(bundle);
         startService(intentMusicService);
         handleBottomView(song, Actions.PLAY_SONG);
