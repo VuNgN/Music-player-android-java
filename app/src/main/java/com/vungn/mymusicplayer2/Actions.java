@@ -1,13 +1,14 @@
 package com.vungn.mymusicplayer2;
 
-public class Common {
-    public static final String MUSIC_PUT_KEY = "Put_music_key";
-    public static final String ACTION_PUT_KEY = "Put_action_key";
+public interface Actions {
+    String MUSIC_PUT_KEY = "Put_music_key";
+    String ACTION_PUT_KEY = "Put_action_key";
+    String MUSIC_HELPER_PUT_KEY = "Put_music_helper_key";
+    String SENT_BROAD_CAST = "Sent_to_main_activity";
+    String IS_PLAYING_PUT_KEY = "Put_is_playing_key";
 
-    public static final int PLAY_SONG = 0;
-    public static final int PAUSE_SONG = 1;
-    public static final int RESUME_SONG = 2;
-    public static final int CLEAR_SONG = 3;
-    public static final String ACTION_SENT_TO_MAIN_ACTIVITY = "Sent_to_main_activity";
-    public static final String MUSIC_HELPER_PUT_KEY = "Put_music_helper_key";
+    int PLAY_SONG = 0;
+    int PAUSE_SONG = 1;
+    int RESUME_SONG = 2;
+    int CLEAR_SONG = 3;
 }

@@ -3,21 +3,33 @@ package com.vungn.mymusicplayer2;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.util.concurrent.BlockingDeque;
+
 public class MusicService extends Service {
     private Song mSong;
     private MusicHelper mMusicHelper;
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            handleAction(intent);
+            startForegroundService();
+        }
+    };
 
     @Nullable
     @Override
@@ -27,49 +39,53 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        registerReceiver(mBroadcastReceiver, new IntentFilter(Actions.SENT_BROAD_CAST));
         getSong(intent);
-        int action = getAction(intent);
-        mMusicHelper.setAction(action);
-        mMusicHelper.handleAction();
-        sendActionToActivity();
-        Notification notification = getNotification();
-        startForeground(1, notification);
+        handleAction(intent);
+        startForegroundService();
         return START_NOT_STICKY;
     }
 
-    private void sendActionToActivity() {
-        Intent intent = new Intent(Common.ACTION_SENT_TO_MAIN_ACTIVITY);
-        Bundle bundle = new Bundle();
-        bundle.putSerializable(Common.MUSIC_HELPER_PUT_KEY, mMusicHelper);
-        intent.putExtras(bundle);
+    private void handleAction(Intent intent) {
+        int action = getAction(intent);
+        mMusicHelper.setAction(action);
+        mMusicHelper.handleAction();
+    }
 
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    private void startForegroundService() {
+        Notification notification = getNotification();
+        startForeground(1, notification);
     }
 
     private int getAction(Intent intent) {
         Bundle bundle = intent.getExtras();
-        return bundle.getInt(Common.ACTION_PUT_KEY, Common.PLAY_SONG);
+        if (bundle != null)
+        return bundle.getInt(Actions.ACTION_PUT_KEY, Actions.PLAY_SONG);
+        return Actions.PLAY_SONG;
     }
 
     private Notification getNotification() {
         Bitmap bitmap = BitmapFactory.decodeResource(getResources(), mSong.getImage());
         MediaSessionCompat mediaSessionCompat = new MediaSessionCompat(this, getString(R.string.notification_tag));
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntentMainActivity = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         return new NotificationCompat.Builder(this, NotifyApplication.CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_baseline_library_music_24)
                 .setSubText(getString(R.string.subtext))
                 .setContentTitle(mSong.getTitle())
                 .setContentText(mSong.getAuthor())
+                .setContentIntent(pendingIntentMainActivity)
                 .setLargeIcon(bitmap)
                 .addAction(R.drawable.ic_baseline_fast_rewind_24, getString(R.string.previous), null)
                 .addAction(
                         mMusicHelper.isPlaying() ? R.drawable.ic_baseline_pause_circle_outline_24
                                 : R.drawable.ic_baseline_play_circle_outline_24,
                         getString(R.string.pause),
-                        getPendingIntent(this, mMusicHelper.isPlaying() ? Common.PAUSE_SONG
-                                : Common.RESUME_SONG))
+                        getPendingIntent(this, mMusicHelper.isPlaying() ? Actions.PAUSE_SONG
+                                : Actions.RESUME_SONG))
                 .addAction(R.drawable.ic_baseline_fast_forward_24, getString(R.string.next), null)
-                .addAction(R.drawable.ic_baseline_cancel_24, getString(R.string.exit), getPendingIntent(this, Common.CLEAR_SONG))
+                .addAction(R.drawable.ic_baseline_cancel_24, getString(R.string.exit), getPendingIntent(this, Actions.CLEAR_SONG))
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setShowActionsInCompactView(1, 3)
                         .setMediaSession(mediaSessionCompat.getSessionToken()))
@@ -77,9 +93,11 @@ public class MusicService extends Service {
     }
 
     private PendingIntent getPendingIntent(Context context, int action) {
-        Intent intent = new Intent(this, MusicBoardcastReceiver.class);
+        Intent intent = new Intent();
+        intent.setAction(Actions.SENT_BROAD_CAST);
         Bundle bundle = new Bundle();
-        bundle.putInt(Common.ACTION_PUT_KEY, action);
+        bundle.putInt(Actions.ACTION_PUT_KEY, action);
+        bundle.putSerializable(Actions.MUSIC_PUT_KEY, mSong);
         intent.putExtras(bundle);
         return PendingIntent.getBroadcast(getApplicationContext(), action, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
@@ -87,11 +105,17 @@ public class MusicService extends Service {
     private void getSong(Intent intent) {
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
-            Song song = (Song) bundle.get(Common.MUSIC_PUT_KEY);
+            Song song = (Song) bundle.get(Actions.MUSIC_PUT_KEY);
             if (song != null) {
                 mSong = song;
                 mMusicHelper = new MusicHelper(this, song);
             }
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(mBroadcastReceiver);
     }
 }

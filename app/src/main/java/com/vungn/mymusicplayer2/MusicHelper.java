@@ -36,16 +36,16 @@ public class MusicHelper implements Serializable {
 
     public void handleAction() {
         switch (mAction) {
-            case Common.PLAY_SONG:
+            case Actions.PLAY_SONG:
                 onPlayMusic();
                 break;
-            case Common.PAUSE_SONG:
+            case Actions.PAUSE_SONG:
                 onPauseMusic();
                 break;
-            case Common.RESUME_SONG:
+            case Actions.RESUME_SONG:
                 onResumeMusic();
                 break;
-            case Common.CLEAR_SONG:
+            case Actions.CLEAR_SONG:
                 onClearMusic();
                 break;
         }
