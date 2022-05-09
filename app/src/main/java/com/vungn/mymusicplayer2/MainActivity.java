@@ -14,7 +14,6 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
-    public static final String KEY_GET_MUSIC = "com.vungn.keyGetMusic";
     private Button playButton;
     private Button stopButton;
     private ImageView songImage;
@@ -24,18 +23,18 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton exitButton;
     private RelativeLayout bottomLayout;
     private boolean isPlaying;
-    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+    private final MusicBroadcastReceiver mBroadcastReceiver = new MusicBroadcastReceiver() {
         @Override
-        public void onReceive(Context context, Intent intent) {
-            Bundle bundle = intent.getExtras();
-            if (bundle != null) {
-                int action = bundle.getInt(MusicService.KEY_ACTION, Actions.PLAY_SONG);
-                Song song = (Song) bundle.get(MusicService.KEY_MUSIC);
-                if (intent.getAction().equals(MusicService.KEY_BROAD_CAST_MUSIC)) {
-                    isPlaying = bundle.getBoolean(MusicService.KEY_MUSIC_STATUS);
-                }
-                handleBottomView(song, action);
-            }
+        public void getMusicBroadcastReceiver(Song song, int action, boolean isPlaying) {
+            super.getMusicBroadcastReceiver(song, action, isPlaying);
+            MainActivity.this.isPlaying = isPlaying;
+            handleBottomView(song, action);
+        }
+
+        @Override
+        public void getNotifyBroadcastReceiver(Song song, int action) {
+            super.getNotifyBroadcastReceiver(song, action);
+            handleBottomView(song, action);
         }
     };
 
@@ -44,15 +43,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getMusic();
-        registerReceiver(mBroadcastReceiver, new IntentFilter(MusicService.KEY_BROAD_CAST_MUSIC));
-        registerReceiver(mBroadcastReceiver, new IntentFilter(MusicService.KEY_BROAD_CAST_NOTIFICATION));
+        registerReceiver(mBroadcastReceiver, mBroadcastReceiver.getMusicIntentFilter());
+        registerReceiver(mBroadcastReceiver, mBroadcastReceiver.getNotifyIntentFilter());
         retrieveView();
         handleClickListener();
     }
 
     private void getMusic() {
         Intent intent = new Intent(this, MusicService.class);
-        intent.setAction(KEY_GET_MUSIC);
+        intent.setAction(MusicService.KEY_GET_MUSIC);
         startService(intent);
     }
 
