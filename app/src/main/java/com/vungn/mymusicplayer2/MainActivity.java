@@ -1,10 +1,8 @@
 package com.vungn.mymusicplayer2;
 
 import androidx.appcompat.app.AppCompatActivity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
+
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -25,15 +23,15 @@ public class MainActivity extends AppCompatActivity {
     private boolean isPlaying;
     private final MusicBroadcastReceiver mBroadcastReceiver = new MusicBroadcastReceiver() {
         @Override
-        public void getMusicBroadcastReceiver(Song song, int action, boolean isPlaying) {
-            super.getMusicBroadcastReceiver(song, action, isPlaying);
+        public void onMusicBroadcastReceiver(Song song, int action, boolean isPlaying) {
+            super.onMusicBroadcastReceiver(song, action, isPlaying);
             MainActivity.this.isPlaying = isPlaying;
             handleBottomView(song, action);
         }
 
         @Override
-        public void getNotifyBroadcastReceiver(Song song, int action) {
-            super.getNotifyBroadcastReceiver(song, action);
+        public void onNotificationBroadcastReceiver(Song song, int action) {
+            super.onNotificationBroadcastReceiver(song, action);
             handleBottomView(song, action);
         }
     };
@@ -43,15 +41,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getMusic();
-        registerReceiver(mBroadcastReceiver, mBroadcastReceiver.getMusicIntentFilter());
-        registerReceiver(mBroadcastReceiver, mBroadcastReceiver.getNotifyIntentFilter());
+        mBroadcastReceiver.registerMusicReceiver(this);
+        mBroadcastReceiver.registerNotificationReceiver(this);
         retrieveView();
         handleClickListener();
     }
 
     private void getMusic() {
         Intent intent = new Intent(this, MusicService.class);
-        intent.setAction(MusicService.KEY_GET_MUSIC);
+        intent.setAction(MusicService.ACTION_GET_MUSIC_ON_START_UP);
         startService(intent);
     }
 
@@ -85,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
     private void sendActionToService(int action) {
         Intent intent = new Intent(this, MusicService.class);
         Bundle bundle = new Bundle();
-        bundle.putInt(MusicService.KEY_ACTION, action);
+        bundle.putInt(MusicService.KEY_MUSIC_ACTION, action);
         intent.putExtras(bundle);
         startService(intent);
     }
@@ -150,6 +148,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(mBroadcastReceiver);
+        mBroadcastReceiver.unregisterReceiver(this);
     }
 }

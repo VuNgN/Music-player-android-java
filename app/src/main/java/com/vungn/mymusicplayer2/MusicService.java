@@ -1,14 +1,15 @@
 package com.vungn.mymusicplayer2;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.MutableContextWrapper;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -18,16 +19,18 @@ import androidx.core.app.NotificationCompat;
 
 public class MusicService extends Service {
     public static final String KEY_MUSIC = "com.vungn.keyMusic";
-    public static final String KEY_ACTION = "com.vungn.keyAction";
-    public static final String KEY_MUSIC_STATUS = "com.vungn.keyMusicStatus";
-    public static final String KEY_GET_MUSIC = "com.vungn.keyGetMusic";
+    public static final String KEY_MUSIC_ACTION = "com.vungn.keyAction";
+    public static final String KEY_MUSIC_PLAYING_STATUS = "com.vungn.keyMusicStatus";
+    public static final String ACTION_GET_MUSIC_ON_START_UP = "com.vungn.keyGetMusic";
+    private static final String CHANNEL_ID = "com.vungn.notificationChannelId";
+    private static final CharSequence CHANNEL_NAME = "com.vungn.notificationChannelName";
 
     private Song mSong;
     private MusicHelper mMusicHelper;
     private final MusicBroadcastReceiver mBroadcastReceiver = new MusicBroadcastReceiver() {
         @Override
-        public void getNotifyBroadcastReceiver(Song song, int action) {
-            super.getNotifyBroadcastReceiver(song, action);
+        public void onNotificationBroadcastReceiver(Song song, int action) {
+            super.onNotificationBroadcastReceiver(song, action);
             handleMediaAction(action);
             startForegroundService();
         }
@@ -43,13 +46,12 @@ public class MusicService extends Service {
     public void onCreate() {
         super.onCreate();
         mMusicHelper = new MusicHelper(this);
-        registerReceiver(mBroadcastReceiver, mBroadcastReceiver.getNotifyIntentFilter());
+        mBroadcastReceiver.registerNotificationReceiver(this);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent.getAction() != null) {
-            if (intent.getAction().equals(KEY_GET_MUSIC)) {
+            if (intent.getAction() == ACTION_GET_MUSIC_ON_START_UP) {
                 if (mSong != null)
                 sendSongInfo();
             } else {
@@ -58,14 +60,13 @@ public class MusicService extends Service {
                 handleMediaAction(action);
                 startForegroundService();
             }
-        }
         return START_NOT_STICKY;
     }
 
     private int getMediaAction(Intent intent) {
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
-            return bundle.getInt(KEY_ACTION, Actions.PLAY_SONG);
+            return bundle.getInt(KEY_MUSIC_ACTION, Actions.PLAY_SONG);
         }
         return Actions.PLAY_SONG;
     }
@@ -81,12 +82,26 @@ public class MusicService extends Service {
     }
 
     private Notification getNotification() {
+        NotificationChannel channel = null;
+        NotificationManager manager = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            channel.setSound(null, null);
+            manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
         Bitmap bitmap = BitmapFactory.decodeResource(getResources(), mSong.getImage());
         MediaSessionCompat mediaSessionCompat = new MediaSessionCompat(this, getString(R.string.notification_tag));
         Intent intent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntentMainActivity = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        return new NotificationCompat.Builder(this, NotifyApplication.CHANNEL_ID)
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_baseline_library_music_24)
                 .setSubText(getString(R.string.subtext))
                 .setContentTitle(mSong.getTitle())
@@ -110,9 +125,9 @@ public class MusicService extends Service {
 
     private PendingIntent getPendingIntent(Context context, int action) {
         Intent intent = new Intent();
-        intent.setAction(MusicBroadcastReceiver.KEY_BROAD_CAST_NOTIFICATION);
+        intent.setAction(MusicBroadcastReceiver.ACTION_NOTIFICATION);
         Bundle bundle = new Bundle();
-        bundle.putInt(KEY_ACTION, action);
+        bundle.putInt(KEY_MUSIC_ACTION, action);
         bundle.putSerializable(KEY_MUSIC, mSong);
         intent.putExtras(bundle);
         return PendingIntent.getBroadcast(getApplicationContext(), action, intent, PendingIntent.FLAG_UPDATE_CURRENT);
@@ -131,10 +146,10 @@ public class MusicService extends Service {
 
     private void sendSongInfo() {
         Intent intentMainActivity = new Intent();
-        intentMainActivity.setAction(MusicBroadcastReceiver.KEY_BROAD_CAST_MUSIC);
+        intentMainActivity.setAction(MusicBroadcastReceiver.ACTION_MUSIC);
         Bundle bundle = new Bundle();
         bundle.putSerializable(KEY_MUSIC, mSong);
-        bundle.putBoolean(KEY_MUSIC_STATUS, mMusicHelper.isPlaying());
+        bundle.putBoolean(KEY_MUSIC_PLAYING_STATUS, mMusicHelper.isPlaying());
         intentMainActivity.putExtras(bundle);
         sendBroadcast(intentMainActivity);
     }
@@ -142,6 +157,6 @@ public class MusicService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(mBroadcastReceiver);
+        mBroadcastReceiver.unregisterReceiver(this);
     }
 }
